@@ -4,17 +4,17 @@ plugins {
 }
 
 android {
-    compileSdkVersion 30
+    compileSdk 34
     ndkVersion "21.4.7075529"
 
     defaultConfig {
         applicationId "com.crosspoint.android"
-        minSdkVersion 27
-        targetSdkVersion 27
+        minSdk 27
+        targetSdk 27
         externalNativeBuild {
             cmake {
                 cppFlags "-std=c++17 -fno-rtti -fno-exceptions -DANDROID=1 -Wall"
-arguments "-DANDROID_STL=c++_static"
+                arguments "-DANDROID_STL=c++_static"
                 version "3.22.1"
             }
         }
@@ -43,6 +43,10 @@ arguments "-DANDROID_STL=c++_static"
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = '17'
     }
 
     namespace 'com.crosspoint.android'

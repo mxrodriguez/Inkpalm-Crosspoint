@@ -1,4 +1,5 @@
 #include "Logging.h"
+#include <cstdint>
 #include <cstring>
 
 constexpr uint32_t LOG_RTC_MAGIC = 0xDEADBEEF;

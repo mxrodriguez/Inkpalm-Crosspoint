@@ -5,7 +5,7 @@
 #include <cerrno>
 #include <cstring>
 #include <string>
-#include <Print.h>
+#include "Arduino.h"
 
 #define O_RDONLY 0
 #define O_WRONLY 1

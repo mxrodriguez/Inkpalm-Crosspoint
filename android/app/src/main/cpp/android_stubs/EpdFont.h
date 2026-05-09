@@ -1,25 +1,23 @@
 #pragma once
-#include <cstdint>
-#include <string>
-#include <vector>
-
-class EpdFontData;
-class EpdGlyph;
-
-class EpdFontFamily;
+#include "EpdFontData.h"
 
 class EpdFont {
-public:
-    enum Style { REGULAR = 0, BOLD = 1, ITALIC = 2, BOLD_ITALIC = 3 };
-    static const uint16_t INVALID_GLYPH = 0xFFFF;
+  void getTextBounds(const char* string, int startX, int startY, int* minX, int* minY, int* maxX, int* maxY) const;
 
-    explicit EpdFont(const uint8_t* data);
-    ~EpdFont();
-    const EpdGlyph* getGlyph(uint32_t cp) const;
-    void getTextDimensions(const char* text, int* w, int* h, Style style = REGULAR) const;
-    int getGlyphAdvance(uint32_t cp) const;
-    int8_t getKerning(uint32_t leftCp, uint32_t rightCp) const;
-    bool hasStyle(Style) const { return true; }
-    uint32_t applyLigatures(uint32_t cp, const char*& text) const { return cp; }
-    const EpdFontData* getData() const { return nullptr; }
+ public:
+  const EpdFontData* data;
+  explicit EpdFont(const EpdFontData* data) : data(data) {}
+  ~EpdFont() = default;
+  void getTextDimensions(const char* string, int* w, int* h) const;
+
+  const EpdGlyph* getGlyph(uint32_t cp) const;
+
+  /// Returns the kerning adjustment (4.4 fixed-point in pixels) between two codepoints.
+  int8_t getKerning(uint32_t leftCp, uint32_t rightCp) const;
+
+  /// Returns the ligature codepoint for a pair, or 0 if no ligature exists.
+  uint32_t getLigature(uint32_t leftCp, uint32_t rightCp) const;
+
+  /// Greedily applies ligature substitutions starting from cp.
+  uint32_t applyLigatures(uint32_t cp, const char*& text) const;
 };

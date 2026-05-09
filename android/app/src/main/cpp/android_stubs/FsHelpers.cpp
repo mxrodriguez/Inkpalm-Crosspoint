@@ -27,7 +27,10 @@ namespace FsHelpers {
 
     String getFileExtension(const String& filename) {
         int dot = filename.lastIndexOf('.');
-        return dot >= 0 ? filename.substring(dot + 1).toLowerCase() : String("");
+        if (dot < 0) return String("");
+        String ext = filename.substring(dot + 1);
+        ext.toLowerCase();
+        return ext;
     }
 
     String getFileNameWithoutExtension(const String& filename) {
