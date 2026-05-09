@@ -408,7 +408,7 @@ uint8_t* ZipFile::readFileToMemory(const char* filename, size_t* size, const boo
     const size_t dataRead = file.read(deflatedData, deflatedDataSize);
 
     if (dataRead != deflatedDataSize) {
-      LOG_ERR("ZIP", "Failed to read data, expected %d got %d", deflatedDataSize, dataRead);
+      LOG_ERR("ZIP", "Failed to read data, expected %zu got %zu", deflatedDataSize, dataRead);
       free(deflatedData);
       free(data);
       return nullptr;
