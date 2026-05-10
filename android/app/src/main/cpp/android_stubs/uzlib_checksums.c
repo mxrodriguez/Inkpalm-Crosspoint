@@ -69,11 +69,13 @@ uint32_t TINFCC uzlib_crc32(const void *data, unsigned int length, uint32_t crc)
     const unsigned char *buf = (const unsigned char *)data;
     unsigned int i;
 
+    crc = ~crc;
+
     for (i = 0; i < length; ++i) {
         crc ^= buf[i];
         crc = tinf_crc32tab[crc & 0x0f] ^ (crc >> 4);
         crc = tinf_crc32tab[crc & 0x0f] ^ (crc >> 4);
     }
 
-    return crc;
+    return ~crc;
 }

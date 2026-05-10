@@ -1,197 +1,211 @@
-# CrossPoint Reader
+# CrossPoint for Android (Inkpalm 5 Port)
 
-Firmware for the **Xteink X4** e-paper display reader (unaffiliated with Xteink).
-Built using **PlatformIO** and targeting the **ESP32-C3** microcontroller.
+Port of the [CrossPoint Reader](https://github.com/crosspoint-reader/crosspoint-reader) ESP32-C3 e-reader firmware to run as a native Android app on the **Moaan InkPalm 5** e-ink phone.
 
-CrossPoint Reader is a purpose-built firmware designed to be a drop-in, fully open-source replacement for the official 
-Xteink firmware. It aims to match or improve upon the standard EPUB reading experience.
+## What This Is
 
-![](./docs/images/cover.jpg)
+CrossPoint is an open-source EPUB reader originally built for the Xteink X4 (ESP32-C3). This fork adds Android NDK stubs for the ESP32 hardware abstraction layer (HAL) so the shared EPUB/PDF/image rendering library compiles natively on Android via JNI.
 
-## Motivation
+The goal: bring CrossPoint's clean, performant e-ink reading experience to the InkPalm 5's 5.2" e-ink display (1280x720, Android 8.1, Allwinner A133).
 
-E-paper devices are fantastic for reading, but most commercially available readers are closed systems with limited 
-customisation. The **Xteink X4** is an affordable, e-paper device, however the official firmware remains closed.
-CrossPoint exists partly as a fun side-project and partly to open up the ecosystem and truly unlock the device's
-potential.
+### Why This Works
 
-CrossPoint Reader aims to:
-* Provide a **fully open-source alternative** to the official firmware.
-* Offer a **document reader** capable of handling EPUB content on constrained hardware.
-* Support **customisable font, layout, and display** options.
-* Run purely on the **Xteink X4 hardware**.
+- CrossPoint's core logic (EPUB parsing, text layout, fonts) is cleanly separated from hardware
+- KOReader already runs on InkPalm 5, proving E-ink Android reading is viable
+- InkPalm 5 has 1GB RAM vs ESP32's 380KB — massive headroom for the rendering pipeline
 
-This project is **not affiliated with Xteink**; it's built as a community project.
+## Current Status
 
-## Features & Usage
+**Iteration 2 — Full Native Build (in progress)**
 
-- [x] EPUB parsing and rendering (EPUB 2 and EPUB 3)
-- [x] Image support within EPUB
-- [x] Saved reading position
-- [x] File explorer with file picker
-  - [x] Basic EPUB picker from root directory
-  - [x] Support nested folders
-  - [ ] EPUB picker with cover art
-- [x] Custom sleep screen
-  - [x] Cover sleep screen
-- [x] Wifi book upload
-- [x] Wifi OTA updates
-- [x] KOReader Sync integration for cross-device reading progress
-- [x] Configurable font, layout, and display options
-  - [ ] User provided fonts
-  - [ ] Full UTF support
-- [x] Screen rotation
+| Milestone | Status |
+|-----------|--------|
+| Android project scaffolded | Done |
+| NDK CMake build (arm64-v8a, armeabi-v7a, x86, x86_64) | Done |
+| 33 Android stub headers + implementations | Done |
+| JNI bridge (`libcrosspoint-jni.so`) | Done |
+| Core C++ libs compiled (Epub, ZipFile, expat, EpdFont, GfxRenderer) | Done |
+| EPUB loading, parsing, and metadata extraction | Done |
+| Chapter rendering to Android Bitmap | Done |
+| Android Activity with page navigation | Done |
+| APK installs and runs on InkPalm 5 | Done |
+| E-ink waveform refresh tuning | Pending |
+| Library browsing UI (file picker, cover art) | Pending |
+| Full font/hyphenation CSS rendering | Pending |
 
-Multi-language support: Read EPUBs in various languages, including English, Spanish, French, German, Italian, Portuguese, Russian, Ukrainian, Polish, Swedish, Norwegian, [and more](./USER_GUIDE.md#supported-languages).
+### What Works Now
 
-See [the user guide](./USER_GUIDE.md) for instructions on operating CrossPoint, including the
-[KOReader Sync quick setup](./USER_GUIDE.md#365-koreader-sync-quick-setup).
+- EPUB parsing (EPUB 2 and EPUB 3)
+- Chapter loading and spine ordering
+- Metadata extraction (title, author, TOC)
+- Page rendering to Android Bitmap via JNI
+- Button-based navigation (Volume Up/Down = next/prev page)
+- JPEG/PNG/BMP image decoders (stub implementations)
+- ZipFile, uzlib decompression, expat XML parsing all compiled natively
 
-For more details about the scope of the project, see the [SCOPE.md](SCOPE.md) document.
+## Architecture
 
-## Installing
-
-### Web (latest firmware)
-
-1. Connect your Xteink X4 to your computer via USB-C and wake/unlock the device
-2. Go to https://xteink.dve.al/ and click "Flash CrossPoint firmware"
-
-To revert back to the official firmware, you can flash the latest official firmware from https://xteink.dve.al/, or swap
-back to the other partition using the "Swap boot partition" button here https://xteink.dve.al/debug.
-
-### Web (specific firmware version)
-
-1. Connect your Xteink X4 to your computer via USB-C
-2. Download the `firmware.bin` file from the release of your choice via the [releases page](https://github.com/crosspoint-reader/crosspoint-reader/releases)
-3. Go to https://xteink.dve.al/ and flash the firmware file using the "OTA fast flash controls" section
-
-To revert back to the official firmware, you can flash the latest official firmware from https://xteink.dve.al/, or swap
-back to the other partition using the "Swap boot partition" button here https://xteink.dve.al/debug.
-
-### Command line (specific firmware version)
-
-1. Install [`esptool`](https://github.com/espressif/esptool) :
-```bash
-pip install esptool
 ```
-2. Download the `firmware.bin` file from the release of your choice via the [releases page](https://github.com/crosspoint-reader/crosspoint-reader/releases)
-3. Connect your Xteink X4 to your computer via USB-C.
-4. Note the device location. On Linux, run `dmesg` after connecting. On MacOS, run :
-```bash
-log stream --predicate 'subsystem == "com.apple.iokit"' --info
+┌─────────────────────────────────┐
+│         Android App (Kotlin)     │
+│   MainActivity  →  JNI calls    │
+├─────────────────────────────────┤
+│        JNI Bridge (C++)         │
+│   jni_bridge.cpp                │
+├─────────────────────────────────┤
+│      Core C++ Libraries         │
+│   Epub │ ZipFile │ expat        │
+│   EpdFont │ GfxRenderer         │
+│   uzlib │ Utf8 │ JsonParser     │
+├─────────────────────────────────┤
+│    Android Stubs (HAL layer)    │
+│   Arduino, HAL, FsHelpers,      │
+│   Logging, WString, base64 ...  │
+└─────────────────────────────────┘
 ```
-5. Flash the firmware :
-```bash
-esptool.py --chip esp32c3 --port /dev/ttyACM0 --baud 921600 write_flash 0x10000 /path/to/firmware.bin
+
+The Android stubs (`android/app/src/main/cpp/android_stubs/`) replace ESP32-specific APIs with Android/POSIX equivalents:
+
+| Stub | Replaces |
+|------|----------|
+| `Arduino.h` | Arduino core (String, millis, etc.) |
+| `FsHelpers.cpp/.h` | ESP32 SPIFFS/SD file I/O → POSIX/Android storage |
+| `HalStorage.h` | SD card access → `/sdcard/` paths |
+| `HalDisplay.h` | E-ink driver → Android Bitmap framebuffer |
+| `Logging.h/.cpp` | `ESP_LOGI` → Android logcat |
+| `WString.h` | Arduino `String` class |
+| `InflateReader.cpp/.h` | uzlib inflate wrapper |
+| `base64.h` | Base64 encode/decode |
+| `ESP.h` | ESP platform headers |
+| `Print.h` | Arduino `Print` base class |
+
+## Project Structure
+
 ```
-Change `/dev/ttyACM0` to the device for your system.
+Inkpalm-Crosspoint/
+├── android/                          # Android project
+│   └── app/
+│       ├── build.gradle              # AGP 7.4.2, NDK r21e, CMake 3.22.1
+│       └── src/main/
+│           ├── cpp/
+│           │   ├── CMakeLists.txt    # NDK CMake build
+│           │   ├── jni_bridge.cpp    # JNI entry point
+│           │   └── android_stubs/    # ESP32 → Android stubs (33 files)
+│           ├── java/.../MainActivity.kt
+│           └── AndroidManifest.xml
+├── lib/                              # CrossPoint core libraries
+│   ├── Epub/                         # EPUB parser & renderer
+│   ├── GfxRenderer/                  # Graphics/rendering engine
+│   ├── EpdFont/                      # Font engine
+│   ├── ZipFile/                      # ZIP archive reader
+│   ├── expat/                        # XML parser
+│   ├── uzlib/                        # Decompression
+│   ├── Utf8/                         # UTF-8 utilities
+│   ├── Txt/                          # Plain text reader
+│   └── Xtc/                          # XTC comic format reader
+├── src/                              # Original ESP32 firmware source
+├── docs/                             # Documentation
+├── scripts/                          # Build/debug scripts
+├── SCOPE.md                          # Project vision & scope
+├── GOVERNANCE.md                     # Community principles
+└── USER_GUIDE.md                     # User guide (original firmware)
+```
 
-### Manual
-
-See [Development](#development) below.
-
-## Development
+## Build
 
 ### Prerequisites
 
-* **PlatformIO Core** (`pio`) or **VS Code + PlatformIO IDE**
-* Python 3.8+
-* USB-C cable for flashing the ESP32-C3
-* Xteink X4
+- Android Studio (latest stable) with NDK r21e installed
+- JDK 17
+- ADB for device deployment
+- InkPalm 5 with USB debugging enabled
 
-### Checking out the code
-
-CrossPoint uses PlatformIO for building and flashing the firmware. To get started, clone the repository:
-
-```
-git clone --recursive https://github.com/crosspoint-reader/crosspoint-reader
-
-# Or, if you've already cloned without --recursive:
-git submodule update --init --recursive
-```
-
-### Flashing your device
-
-Connect your Xteink X4 to your computer via USB-C and run the following command.
+### Build the APK
 
 ```sh
-pio run --target upload
+cd android
+./gradlew assembleDebug
 ```
-### Debugging
 
-After flashing the new features, it’s recommended to capture detailed logs from the serial port.
+The debug APK is output to `android/app/build/outputs/apk/debug/app-debug.apk`.
 
-First, make sure all required Python packages are installed:
+### Install on Device
 
-```python
-python3 -m pip install pyserial colorama matplotlib
-```
-after that run the script:
 ```sh
-# For Linux
-# This was tested on Debian and should work on most Linux systems.
-python3 scripts/debugging_monitor.py
-
-# For macOS
-python3 scripts/debugging_monitor.py /dev/cu.usbmodem2101
-```
-Minor adjustments may be required for Windows.
-
-## Internals
-
-CrossPoint Reader is pretty aggressive about caching data down to the SD card to minimise RAM usage. The ESP32-C3 only
-has ~380KB of usable RAM, so we have to be careful. A lot of the decisions made in the design of the firmware were based
-on this constraint.
-
-### Data caching
-
-The first time chapters of a book are loaded, they are cached to the SD card. Subsequent loads are served from the 
-cache. This cache directory exists at `.crosspoint` on the SD card. The structure is as follows:
-
-
-```
-.crosspoint/
-├── epub_12471232/       # Each EPUB is cached to a subdirectory named `epub_<hash>`
-│   ├── progress.bin     # Stores reading progress (chapter, page, etc.)
-│   ├── cover.bmp        # Book cover image (once generated)
-│   ├── book.bin         # Book metadata (title, author, spine, table of contents, etc.)
-│   └── sections/        # All chapter data is stored in the sections subdirectory
-│       ├── 0.bin        # Chapter data (screen count, all text layout info, etc.)
-│       ├── 1.bin        #     files are named by their index in the spine
-│       └── ...
-│
-└── epub_189013891/
+adb install -r android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Deleting the `.crosspoint` directory will clear the entire cache. 
+### Launch
 
-Due the way it's currently implemented, the cache is not automatically cleared when a book is deleted and moving a book
-file will use a new cache directory, resetting the reading progress.
+```sh
+adb shell am start -n com.crosspoint.android/.MainActivity
+```
 
-For more details on the internal file structures, see the [file formats document](./docs/file-formats.md).
+### View Logs
+
+```sh
+adb logcat -s CrossPoint
+```
+
+### Build Flags
+
+The NDK build defines:
+
+- `-DANDROID=1` — Android platform target
+- `-DCROSPOINT_ANDROID=1` — CrossPoint Android fork identifier
+- C++17, no RTTI, no exceptions
+
+## Target Device
+
+| Property | Value |
+|----------|-------|
+| Device | Moaan InkPalm 5 |
+| Android | 8.1 (API 27) |
+| SoC | Allwinner A133 |
+| Display | 5.2" E-ink, 1280x720 |
+| RAM | 1GB |
+| GPU | Mali-400 MP, OpenGL ES 2.0 |
+| Storage | ~24GB free on `/sdcard/` |
+| E-ink controller | GU16 mode (SurfaceFlinger confirmed) |
+
+### Physical Buttons
+
+| Button | KeyCode | ScanCode | Usage |
+|--------|---------|----------|-------|
+| Volume Up | 24 | 115 | Next page |
+| Volume Down | 25 | 114 | Previous page |
+| Logo/Back (tap) | 4 | 0 | Menu |
+| Logo/Back (long) | — | — | Full e-ink refresh |
+| Power | — | — | Sleep/wake |
 
 ## Contributing
 
-Contributions are very welcome!
+Contributions welcome! See the original project's [contributing docs](./docs/contributing/README.md) and [governance](GOVERNANCE.md).
 
-If you are new to the codebase, start with the [contributing docs](./docs/contributing/README.md).
+### Quick Start
 
-If you're looking for a way to help out, take a look at the [ideas discussion board](https://github.com/crosspoint-reader/crosspoint-reader/discussions/categories/ideas).
-If there's something there you'd like to work on, leave a comment so that we can avoid duplicated effort.
-
-Everyone here is a volunteer, so please be respectful and patient. For more details on our governance and community 
-principles, please see [GOVERNANCE.md](GOVERNANCE.md).
-
-### To submit a contribution:
-
-1. Fork the repo
-2. Create a branch (`feature/dithering-improvement`)
+1. Fork this repo
+2. Create a branch (`feature/your-feature`)
 3. Make changes
-4. Submit a PR
+4. Test on device with `adb install -r`
+5. Submit a PR
 
----
+## Roadmap
 
-CrossPoint Reader is **not affiliated with Xteink or any manufacturer of the X4 hardware**.
+- [ ] E-ink waveform refresh optimization (Regal, A2, GU16 modes)
+- [ ] Library browsing UI with cover art
+- [ ] EPUB file picker via Android intent
+- [ ] Full CSS rendering pipeline
+- [ ] Configurable font/layout settings
+- [ ] KOReader Sync integration
+- [ ] WiFi book upload (web server)
 
-Huge shoutout to [**diy-esp32-epub-reader** by atomic14](https://github.com/atomic14/diy-esp32-epub-reader), which was a project I took a lot of inspiration from as I
-was making CrossPoint.
+## License
+
+MIT License. See [LICENSE](LICENSE).
+
+## Original Project
+
+The original CrossPoint Reader firmware (PlatformIO + ESP32-C3) lives at [crosspoint-reader/crosspoint-reader](https://github.com/crosspoint-reader/crosspoint-reader).
+
+This port is **not affiliated with Moaan or any manufacturer of the InkPalm 5 hardware**.

@@ -1,7 +1,8 @@
 #pragma once
 // Arduino compatibility header for CrossPoint Android port
-// Consolidates Print + String + Arduino function stubs
-// No ODR violations: Print is defined here only, String is in WString.h
+// SINGLE TRUTH SOURCE for all Arduino-compat types.
+// Always include this header; never include WString.h or Print.h directly.
+// No ODR violations: Print is defined here, String is in WString.h (included below).
 
 #include <cassert>
 #include <cmath>
@@ -21,13 +22,54 @@ public:
 
     size_t print(const char* s) { size_t n = 0; while (*s) n += write((uint8_t)*s++); return n; }
     size_t print(const String& s) { return print(s.c_str()); }
+    size_t print(int n) {
+        char buf[16];
+        int len = snprintf(buf, sizeof(buf), "%d", n);
+        return write((const uint8_t*)buf, len);
+    }
+    size_t print(unsigned long n) {
+        char buf[32];
+        int len = snprintf(buf, sizeof(buf), "%lu", n);
+        return write((const uint8_t*)buf, len);
+    }
+    size_t print(double n, int precision = 2) {
+        char buf[64];
+        int len = snprintf(buf, sizeof(buf), "%.*f", precision, n);
+        return write((const uint8_t*)buf, len);
+    }
+    size_t print(char c) {
+        return write((uint8_t)c);
+    }
     size_t println(const char* s) { size_t n = print(s); n += write('\n'); return n; }
     size_t println(const String& s) { return println(s.c_str()); }
     size_t println() { return write('\n'); }
+    size_t println(int n) {
+        size_t sz = print(n);
+        sz += write('\n');
+        return sz;
+    }
+    size_t println(unsigned long n) {
+        size_t sz = print(n);
+        sz += write('\n');
+        return sz;
+    }
+    size_t println(double n, int precision = 2) {
+        size_t sz = print(n, precision);
+        sz += write('\n');
+        return sz;
+    }
+    size_t println(char c) {
+        size_t sz = print(c);
+        sz += write('\n');
+        return sz;
+    }
 
     // printf support for logging
     size_t printf(const char* fmt, ...) __attribute__((format(printf, 2, 3)));
 };
+
+// ---- ESP stubs (ESP.getFreeHeap(), etc.) ----
+#include "ESP.h"
 
 // ---- Arduino function stubs ----
 #ifndef CROSSPOINT_ANDROID

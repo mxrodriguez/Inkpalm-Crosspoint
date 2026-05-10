@@ -4,7 +4,6 @@
 
 #include <string>
 #include <cctype>
-#include <algorithm>
 #include <cstdio>
 #include <cstdarg>
 #include <cstring>
@@ -34,6 +33,11 @@ public:
         size_t pos = rfind(s);
         return pos == npos ? -1 : (int)pos;
     }
+    int lastIndexOf(const String& str, int from) const {
+        if (from < 0) return -1;
+        size_t pos = rfind(str, (size_t)from);
+        return pos == npos ? -1 : (int)pos;
+    }
 
     // Arduino API — substring (from, to) where 'to' is END POSITION, not length
     String substring(int start) const { return substr(start); }
@@ -54,30 +58,35 @@ public:
     }
 
     // Arduino API — trim (remove leading/trailing whitespace)
-    String trim() const {
+    String& trim() {
         size_t start = find_first_not_of(" \t\n\r\f\v");
-        if (start == npos) return String();
+        if (start == npos) { clear(); return *this; }
         size_t end = find_last_not_of(" \t\n\r\f\v");
-        return substr(start, end - start + 1);
+        std::string tmp = substr(start, end - start + 1);
+        assign(tmp);
+        return *this;
     }
 
     // Arduino API — case conversion (in-place)
-    void toLowerCase() {
+    String& toLowerCase() {
         for (auto& c : *this) c = (char)tolower((unsigned char)c);
+        return *this;
     }
 
-    void toUpperCase() {
+    String& toUpperCase() {
         for (auto& c : *this) c = (char)toupper((unsigned char)c);
+        return *this;
     }
 
     // Arduino API — replace (2-arg: replace all occurrences of 'from' with 'with')
-    void replace(const String& from, const String& with) {
-        if (from.empty()) return;
+    String& replace(const String& from, const String& with) {
+        if (from.empty()) return *this;
         size_t pos = 0;
         while ((pos = find(from, pos)) != npos) {
             std::string::replace(pos, from.size(), with);
             pos += with.size();
         }
+        return *this;
     }
 
     // Arduino API — remove (delete chars from position)
