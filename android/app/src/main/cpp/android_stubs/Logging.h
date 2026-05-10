@@ -23,6 +23,7 @@
 #define ENABLE_SERIAL_LOG
 
 #define LOG_ERR(o, f, ...) __android_log_print(ANDROID_LOG_ERROR, o, f, ##__VA_ARGS__)
+#define LOG_WRN(o, f, ...) __android_log_print(ANDROID_LOG_WARN, o, f, ##__VA_ARGS__)
 #define LOG_INF(o, f, ...) __android_log_print(ANDROID_LOG_INFO, o, f, ##__VA_ARGS__)
 #define LOG_DBG(o, f, ...) ((void)0)
 

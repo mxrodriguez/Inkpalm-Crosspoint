@@ -14,13 +14,13 @@ add_definitions(-DCROSPOINT_ANDROID=1)
 
 include_directories(
     ${CMAKE_SOURCE_DIR}
+    ${STUB_DIR}
     ${CROSSPOINT_ROOT}/lib
     ${CROSSPOINT_ROOT}/lib/ZipFile
     ${CROSSPOINT_ROOT}/lib/uzlib/src
     ${CROSSPOINT_ROOT}/lib/expat
     ${CROSSPOINT_ROOT}/lib/EpdFont
     ${CROSSPOINT_ROOT}/lib/GfxRenderer
-    ${STUB_DIR}
 )
 
 # uzlib (compression) - C library
@@ -71,8 +71,8 @@ add_library(epdfont STATIC
 target_link_libraries(epdfont inflateReader crosspoint_logging)
 target_include_directories(epdfont PUBLIC
     "${CROSSPOINT_ROOT}/lib/EpdFont"
-    "${CROSSPOINT_ROOT}/lib"
     "${STUB_DIR}"
+    "${CROSSPOINT_ROOT}/lib"
 )
 
 # GfxRenderer — real rendering engine
@@ -85,8 +85,8 @@ add_library(gfxrenderer STATIC
 target_link_libraries(gfxrenderer epdfont utf8 crosspoint_logging arduino_compat)
 target_include_directories(gfxrenderer PUBLIC
     "${CROSSPOINT_ROOT}/lib/GfxRenderer"
-    "${CROSSPOINT_ROOT}/lib"
     "${STUB_DIR}"
+    "${CROSSPOINT_ROOT}/lib"
 )
 
 # Serialization
@@ -96,8 +96,8 @@ add_library(serialization STATIC
 target_link_libraries(serialization crosspoint_logging)
 target_include_directories(serialization PUBLIC
     "${CROSSPOINT_ROOT}/lib/Serialization"
-    "${CROSSPOINT_ROOT}/lib"
     "${STUB_DIR}"
+    "${CROSSPOINT_ROOT}/lib"
 )
 
 # I18n — needs generated I18nKeys.h/I18nStrings.h from YAML translations
@@ -109,8 +109,8 @@ add_library(xmlparserutils INTERFACE)
 target_include_directories(xmlparserutils INTERFACE
     "${CROSSPOINT_ROOT}/lib/XmlParserUtils"
     "${CROSSPOINT_ROOT}/lib/expat"
-    "${CROSSPOINT_ROOT}/lib"
     "${STUB_DIR}"
+    "${CROSSPOINT_ROOT}/lib"
 )
 target_link_libraries(xmlparserutils INTERFACE expat)
 
@@ -121,8 +121,8 @@ add_library(jpegtobmp STATIC
 target_link_libraries(jpegtobmp crosspoint_logging)
 target_include_directories(jpegtobmp PUBLIC
     "${CROSSPOINT_ROOT}/lib/JpegToBmpConverter"
-    "${CROSSPOINT_ROOT}/lib"
     "${STUB_DIR}"
+    "${CROSSPOINT_ROOT}/lib"
 )
 
 # PngToBmpConverter (Android stub — real file's own PNG parsing needs full InflateReader)
@@ -132,8 +132,8 @@ add_library(pngtobmp STATIC
 target_link_libraries(pngtobmp inflateReader crosspoint_logging)
 target_include_directories(pngtobmp PUBLIC
     "${CROSSPOINT_ROOT}/lib/PngToBmpConverter"
-    "${CROSSPOINT_ROOT}/lib"
     "${STUB_DIR}"
+    "${CROSSPOINT_ROOT}/lib"
 )
 
 # Epub — core book parsing engine
@@ -176,6 +176,7 @@ target_include_directories(epub PUBLIC
     "${CROSSPOINT_ROOT}/lib/Epub/Epub/css"
     "${CROSSPOINT_ROOT}/lib/Epub/Epub/hyphenation"
     "${CROSSPOINT_ROOT}/lib/Epub/Epub/parsers"
+    "${STUB_DIR}"
     "${CROSSPOINT_ROOT}/lib"
     "${CROSSPOINT_ROOT}/lib/ZipFile"
     "${CROSSPOINT_ROOT}/lib/expat"
@@ -186,7 +187,6 @@ target_include_directories(epub PUBLIC
     "${CROSSPOINT_ROOT}/lib/PngToBmpConverter"
     "${CROSSPOINT_ROOT}/lib/Serialization"
     "${CROSSPOINT_ROOT}/lib/I18n"
-    "${STUB_DIR}"
 )
 
 # Txt — plain text reader
@@ -196,8 +196,8 @@ add_library(txt STATIC
 target_link_libraries(txt jpegtobmp crosspoint_logging)
 target_include_directories(txt PUBLIC
     "${CROSSPOINT_ROOT}/lib/Txt"
-    "${CROSSPOINT_ROOT}/lib"
     "${STUB_DIR}"
+    "${CROSSPOINT_ROOT}/lib"
 )
 
 # Xtc — CrossPoint comic format reader
@@ -207,8 +207,8 @@ add_library(xtc STATIC
 target_link_libraries(xtc gfxrenderer crosspoint_logging)
 target_include_directories(xtc PUBLIC
     "${CROSSPOINT_ROOT}/lib/Xtc"
-    "${CROSSPOINT_ROOT}/lib"
     "${STUB_DIR}"
+    "${CROSSPOINT_ROOT}/lib"
 )
 
 # Main JNI bridge
@@ -224,6 +224,7 @@ serialization xmlparserutils
 )
 target_include_directories(crosspoint-jni PRIVATE
     ${CMAKE_SOURCE_DIR}
+    ${STUB_DIR}
     "${CROSSPOINT_ROOT}/lib"
     "${CROSSPOINT_ROOT}/lib/uzlib/src"
     "${CROSSPOINT_ROOT}/lib/expat"
@@ -244,5 +245,4 @@ target_include_directories(crosspoint-jni PRIVATE
     "${CROSSPOINT_ROOT}/lib/Xtc"
     "${CROSSPOINT_ROOT}/lib/JpegToBmpConverter"
     "${CROSSPOINT_ROOT}/lib/PngToBmpConverter"
-    ${STUB_DIR}
 )

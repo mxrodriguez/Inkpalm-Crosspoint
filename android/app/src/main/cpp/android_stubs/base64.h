@@ -3,7 +3,7 @@
 // Replaces the empty stub with a full implementation
 // API matches the ESP32 Arduino base64 class
 
-#include "WString.h"
+#include <Arduino.h>
 #include <cstddef>
 #include <cstdint>
 
@@ -18,19 +18,6 @@ public:
 
         String result;
         size_t i = 0;
-
-        while (i < length) {
-            uint32_t octet_a = data[i++];
-            uint32_t octet_b = (i < length) ? data[i++] : 0;
-            uint32_t octet_c = (i <= length) ? ((i - 1 < length) ? data[i - 1] : 0) : 0;
-
-            // Recalculate properly
-            i = (i > length) ? i : i; // no-op, just recalculate below
-        }
-
-        // Reset and use a cleaner approach
-        result.clear();
-        i = 0;
 
         while (i < length) {
             // How many bytes do we have in this group?

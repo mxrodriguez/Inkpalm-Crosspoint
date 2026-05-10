@@ -1,8 +1,119 @@
 #include "FsHelpers.h"
+#include <cctype>
 #include <cstring>
 #include <algorithm>
+#include <string>
+#include <vector>
 
 namespace FsHelpers {
+
+std::string normalisePath(const std::string& path) {
+    std::vector<std::string> components;
+    std::string component;
+
+    for (const auto c : path) {
+        if (c == '/') {
+            if (!component.empty()) {
+                if (component == "..") {
+                    if (!components.empty()) {
+                        components.pop_back();
+                    }
+                } else {
+                    components.push_back(component);
+                }
+                component.clear();
+            }
+        } else {
+            component += c;
+        }
+    }
+
+    if (!component.empty()) {
+        components.push_back(component);
+    }
+
+    std::string result;
+    for (const auto& c : components) {
+        if (!result.empty()) {
+            result += "/";
+        }
+        result += c;
+    }
+    return result;
+}
+
+void sortFileList(std::vector<std::string>& strs) {
+    std::sort(begin(strs), end(strs), [](const std::string& a, const std::string& b) {
+        bool isDir1 = a.back() == '/';
+        bool isDir2 = b.back() == '/';
+        if (isDir1 != isDir2) return isDir1;
+        return a < b;
+    });
+}
+
+bool checkFileExtension(std::string_view fileName, const char* extension) {
+    auto dot = fileName.rfind('.');
+    if (dot == std::string_view::npos) return false;
+    std::string_view ext = fileName.substr(dot + 1);
+    if (ext.size() != strlen(extension)) return false;
+    for (size_t i = 0; i < ext.size(); ++i) {
+        if (std::tolower(ext[i]) != std::tolower(extension[i])) return false;
+    }
+    return true;
+}
+
+bool hasJpgExtension(std::string_view fileName) {
+    return checkFileExtension(fileName, "jpg") || checkFileExtension(fileName, "jpeg");
+}
+
+bool hasPngExtension(std::string_view fileName) {
+    return checkFileExtension(fileName, "png");
+}
+
+bool hasBmpExtension(std::string_view fileName) {
+    return checkFileExtension(fileName, "bmp");
+}
+
+bool hasGifExtension(std::string_view fileName) {
+    return checkFileExtension(fileName, "gif");
+}
+
+bool hasEpubExtension(std::string_view fileName) {
+    return checkFileExtension(fileName, "epub");
+}
+
+bool hasXtcExtension(std::string_view fileName) {
+    return checkFileExtension(fileName, "xtc") || checkFileExtension(fileName, "xtch");
+}
+
+bool hasTxtExtension(std::string_view fileName) {
+    return checkFileExtension(fileName, "txt");
+}
+
+bool hasMarkdownExtension(std::string_view fileName) {
+    return checkFileExtension(fileName, "md");
+}
+
+std::string extractFolderPath(const std::string& filePath) {
+    auto pos = filePath.rfind('/');
+    if (pos == std::string::npos) return "";
+    return filePath.substr(0, pos + 1);
+}
+
+void sanitizePathComponentForFat32(const char* input, char* output, size_t maxLen) {
+    size_t i = 0;
+    for (size_t j = 0; input[j] != '\0' && i < maxLen - 1; ++j) {
+        unsigned char c = static_cast<unsigned char>(input[j]);
+        if (c <= 0x1F || c == 0x7F || c == '/' || c == '\\' || c == ':' || c == '*' ||
+            c == '?' || c == '"' || c == '<' || c == '>' || c == '|') {
+            output[i++] = '-';
+        } else {
+            output[i++] = c;
+        }
+    }
+    output[i] = '\0';
+}
+
     String getBaseName(const String& path) {
         int sep = path.lastIndexOf('/');
         if (sep < 0) sep = path.lastIndexOf('\\');
