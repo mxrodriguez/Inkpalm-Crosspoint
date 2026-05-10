@@ -7,6 +7,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Rect
 import android.os.Bundle
 import android.os.Environment
 import android.util.Log
@@ -14,7 +15,6 @@ import android.view.Gravity
 import android.view.KeyEvent
 import android.view.View
 import android.widget.FrameLayout
-import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -35,7 +35,7 @@ class MainActivity : Activity() {
 
     private var messageView: TextView? = null
     private var scrollView: ScrollView? = null
-    private var readerView: ImageView? = null
+    private var einkView: EinkSurfaceView? = null
     private var chapterListView: ScrollView? = null
     private var isReaderMode = false
     private var isChapterListVisible = false
@@ -57,13 +57,13 @@ class MainActivity : Activity() {
     private val screenHeight = 1280
     private val screenMargin = 40
 
-    external fun nativeGetVersion(): String
-    external fun nativeGetLibraryInfo(): String
-    external fun nativeLoadEpub(filepath: String, cacheDir: String): Boolean
-    external fun nativeGetChapterCount(): Int
-    external fun nativeGetChapterLines(chapterIndex: Int): Array<String>
-    external fun nativeGetChapterTitle(chapterIndex: Int): String
-    external fun nativeRenderPage(bitmap: Bitmap, chapterIndex: Int, scrollPercent: Float): Bitmap
+    // External native methods
+    private external fun nativeGetVersion(): String
+    private external fun nativeGetLibraryInfo(): String
+    private external fun nativeLoadEpub(filepath: String, cacheDir: String): Boolean
+    private external fun nativeGetChapterCount(): Int
+    private external fun nativeGetChapterLines(chapterIndex: Int): Array<String>
+    private external fun nativeGetChapterTitle(chapterIndex: Int): String
 
     init {
         System.loadLibrary("crosspoint-jni")
@@ -113,8 +113,8 @@ class MainActivity : Activity() {
         infoLayout.addView(headerView)
         infoLayout.addView(scrollView)
 
-        // Reader view (Canvas-based for E-ink)
-        readerView = ImageView(this).apply {
+        // E-ink SurfaceView for reader
+        einkView = EinkSurfaceView(this).apply {
             visibility = View.GONE
             setBackgroundColor(Color.WHITE)
         }
@@ -151,7 +151,7 @@ class MainActivity : Activity() {
             FrameLayout.LayoutParams.MATCH_PARENT,
             FrameLayout.LayoutParams.MATCH_PARENT
         ))
-        layout.addView(readerView, FrameLayout.LayoutParams(
+        layout.addView(einkView, FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.MATCH_PARENT,
             FrameLayout.LayoutParams.MATCH_PARENT
         ))
@@ -167,7 +167,7 @@ class MainActivity : Activity() {
 
     private fun showInfo() {
         isReaderMode = false
-        readerView?.visibility = View.GONE
+        einkView?.visibility = View.GONE
         scrollView?.parent?.let { (it as View).visibility = View.VISIBLE }
 
         val version = try { nativeGetVersion() } catch (e: UnsatisfiedLinkError) { "NOT LOADED: ${e.message}" }
@@ -186,6 +186,9 @@ class MainActivity : Activity() {
             appendLine("Display: ${screenWidth}x${screenHeight} (portrait)")
             appendLine("E-ink: EINK_GC16_MODE")
             appendLine()
+            appendLine("--- EinkSurfaceView ---")
+            appendLine(einkView?.getDisplayInfo() ?: "Not initialized")
+            appendLine()
             appendLine("--- Display Settings ---")
             appendLine("Font Size: ${fontSize.toInt()}pt")
             appendLine("Line Height: ${lineHeight}px")
@@ -195,6 +198,7 @@ class MainActivity : Activity() {
             appendLine("Back (2x quick): exit app")
             appendLine("Vol+/Vol-: adjust font size (info screen)")
             appendLine("Vol+/Vol-: page navigation (reader mode)")
+            appendLine("Logo long: force full e-ink refresh")
             appendLine()
             appendLine("--- EPUB Test ---")
 
@@ -260,7 +264,7 @@ class MainActivity : Activity() {
         isChapterListVisible = false
         scrollView?.parent?.let { (it as View).visibility = View.GONE }
         chapterListView?.visibility = View.GONE
-        readerView?.visibility = View.VISIBLE
+        einkView?.visibility = View.VISIBLE
         Log.i(TAG, "showReader: chapterLines=${chapterLines != null}, totalPages=$totalPages, currentChapter=$currentChapter")
 
         if (chapterLines == null || chapterLines!!.isEmpty()) {
@@ -279,7 +283,7 @@ class MainActivity : Activity() {
 
     private fun showChapterList() {
         isChapterListVisible = true
-        readerView?.visibility = View.GONE
+        einkView?.visibility = View.GONE
         chapterListView?.visibility = View.VISIBLE
         scrollView?.parent?.let { (it as View).visibility = View.GONE }
 
@@ -345,41 +349,24 @@ class MainActivity : Activity() {
     }
 
     private fun renderPage() {
-        if (chapterLines == null) return
-
-        val bitmap = Bitmap.createBitmap(screenWidth, screenHeight, Bitmap.Config.RGB_565)
-        val canvas = Canvas(bitmap)
-        canvas.drawColor(Color.WHITE)
-
-        val paint = Paint().apply {
-            color = Color.BLACK
-            textSize = fontSize
-            isAntiAlias = true
-        }
+        if (chapterLines == null || einkView == null) return
 
         val lines = chapterLines!!
         val linesPerPage = (screenHeight - 2 * screenMargin) / lineHeight
         val startLine = currentPage * linesPerPage
         val endLine = minOf(startLine + linesPerPage, lines.size)
 
-        Log.i(TAG, "Rendered page $currentPage: lines $startLine-${endLine - 1}")
+        Log.i(TAG, "Rendering page $currentPage: lines $startLine-${endLine - 1}")
 
-        for (i in startLine until endLine) {
-            val y = screenMargin + (i - startLine + 1) * lineHeight
-            canvas.drawText(lines[i], screenMargin.toFloat(), y.toFloat(), paint)
-        }
-
-        // Page indicator
-        val pageText = "${currentPage + 1}/$totalPages"
-        val pageX = screenWidth.toFloat() - screenMargin.toFloat() - paint.measureText(pageText)
-        val pageY = screenHeight.toFloat() - screenMargin.toFloat() / 2f
-        canvas.drawText(pageText, pageX, pageY, paint)
-
-        readerView?.setImageBitmap(bitmap)
-        
-        // Force view invalidation - triggers E-ink hardware composer automatically
-        readerView?.postInvalidate()
-        readerView?.parent?.let { (it as? View)?.postInvalidate() }
+        // Use EinkSurfaceView's text rendering
+        einkView?.renderTextPage(
+            lines = lines,
+            startLine = startLine,
+            fontSize = fontSize,
+            lineHeight = lineHeight,
+            margin = screenMargin,
+            waveformMode = if (currentPage == 0) EinkSurfaceView.WAVEFORM_GU16 else EinkSurfaceView.WAVEFORM_AUTO
+        )
     }
 
     private var backPressTime: Long = 0
@@ -420,6 +407,15 @@ class MainActivity : Activity() {
                 }
                 KeyEvent.KEYCODE_BACK -> {
                     val currentTime = System.currentTimeMillis()
+
+                    // Check for long press (hold > 1000ms)
+                    if (currentTime - backPressTime > 1000) {
+                        // Long press — force full e-ink refresh
+                        Log.i(TAG, "Long Back press - forcing full e-ink refresh")
+                        einkView?.forceFullRefresh()
+                        return true
+                    }
+
                     if (currentTime - backPressTime < 1500) {
                         Log.i(TAG, "Double Back press - exiting app")
                         saveSettings()
@@ -442,5 +438,10 @@ class MainActivity : Activity() {
             }
         }
         return super.onKeyDown(keyCode, event)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        saveSettings()
     }
 }
