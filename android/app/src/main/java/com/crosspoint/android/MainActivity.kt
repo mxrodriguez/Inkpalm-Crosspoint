@@ -369,13 +369,22 @@ class MainActivity : Activity() {
         )
     }
 
-    private var backPressTime: Long = 0
+    // Back button state tracking
+    private var backPressDownTime: Long = 0
+    private var lastShortPressTime: Long = 0
+    private val LONG_PRESS_THRESHOLD = 800L    // hold > 0.8s = long press
+    private val DOUBLE_PRESS_THRESHOLD = 2000L // two taps within 2s = double press
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         val scanCode = event?.scanCode ?: 0
-        val action = event?.action ?: 0
 
-        if (action == KeyEvent.ACTION_DOWN) {
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            backPressDownTime = System.currentTimeMillis()
+            Log.i(TAG, "Back DOWN: scanCode=$scanCode, readerMode=$isReaderMode, chapterList=$isChapterListVisible")
+            return true  // consume the event
+        }
+
+        if (event?.action == KeyEvent.ACTION_DOWN) {
             Log.i(TAG, "KeyDown: keyCode=$keyCode, scanCode=$scanCode, readerMode=$isReaderMode, chapterList=$isChapterListVisible")
 
             when (keyCode) {
@@ -405,39 +414,53 @@ class MainActivity : Activity() {
                     }
                     return true
                 }
-                KeyEvent.KEYCODE_BACK -> {
-                    val currentTime = System.currentTimeMillis()
-
-                    // Check for long press (hold > 1000ms)
-                    if (currentTime - backPressTime > 1000) {
-                        // Long press — force full e-ink refresh
-                        Log.i(TAG, "Long Back press - forcing full e-ink refresh")
-                        einkView?.forceFullRefresh()
-                        return true
-                    }
-
-                    if (currentTime - backPressTime < 1500) {
-                        Log.i(TAG, "Double Back press - exiting app")
-                        saveSettings()
-                        finish()
-                        return true
-                    }
-                    backPressTime = currentTime
-
-                    // 3-state cycle: Info → Reader → Chapter List → Info
-                    if (!isReaderMode && !isChapterListVisible) {
-                        showReader()
-                    } else if (isReaderMode) {
-                        saveSettings()
-                        showChapterList()
-                    } else {
-                        showReader()
-                    }
-                    return true
-                }
             }
         }
         return super.onKeyDown(keyCode, event)
+    }
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            val holdDuration = System.currentTimeMillis() - backPressDownTime
+            val currentTime = System.currentTimeMillis()
+            Log.i(TAG, "Back UP: hold=${holdDuration}ms")
+
+            if (holdDuration >= LONG_PRESS_THRESHOLD) {
+                // Long press — force full e-ink refresh
+                Log.i(TAG, "Long press detected - forcing full e-ink refresh")
+                einkView?.forceFullRefresh()
+                lastShortPressTime = 0  // reset double-press tracking
+                return true
+            }
+
+            // Short press
+            val timeSinceLastPress = currentTime - lastShortPressTime
+            Log.i(TAG, "Short press: timeSinceLast=$timeSinceLastPress, threshold=$DOUBLE_PRESS_THRESHOLD, lastShortPress=$lastShortPressTime")
+            if (lastShortPressTime > 0 && timeSinceLastPress < DOUBLE_PRESS_THRESHOLD) {
+                // Double press — exit app
+                Log.i(TAG, "Double press detected - exiting app")
+                lastShortPressTime = 0
+                saveSettings()
+                finish()
+                return true
+            }
+
+            // Single short press — navigate
+            lastShortPressTime = currentTime
+            Log.i(TAG, "Single press - navigating")
+
+            // 3-state cycle: Info → Reader → Chapter List → Reader
+            if (!isReaderMode && !isChapterListVisible) {
+                showReader()
+            } else if (isReaderMode) {
+                saveSettings()
+                showChapterList()
+            } else {
+                showReader()
+            }
+            return true
+        }
+        return super.onKeyUp(keyCode, event)
     }
 
     override fun onDestroy() {
