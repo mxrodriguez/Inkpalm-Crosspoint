@@ -454,13 +454,13 @@ class MainActivity : Activity() {
             Log.i(TAG, "Single press - navigating")
 
             // 3-state cycle: Info → Reader → Chapter List → Reader
-            if (!isReaderMode && !isChapterListVisible) {
+            if (isChapterListVisible) {
                 showReader()
-            } else if (isReaderMode) {
+            } else if (!isReaderMode) {
+                showReader()
+            } else {
                 saveSettings()
                 showChapterList()
-            } else {
-                showReader()
             }
             return true
         }
