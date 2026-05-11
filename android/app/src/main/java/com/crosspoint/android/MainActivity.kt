@@ -36,6 +36,7 @@ class MainActivity : Activity() {
     private var messageView: TextView? = null
     private var scrollView: ScrollView? = null
     private var einkView: EinkSurfaceView? = null
+    private var chapterListLayout: LinearLayout? = null
     private var chapterListView: ScrollView? = null
     private var isReaderMode = false
     private var isChapterListVisible = false
@@ -120,7 +121,7 @@ class MainActivity : Activity() {
         }
 
         // Chapter list view
-        val chapterListLayout = LinearLayout(this).apply {
+        chapterListLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(Color.WHITE)
             setPadding(40, 20, 40, 20)
@@ -134,7 +135,7 @@ class MainActivity : Activity() {
             setPadding(0, 0, 0, 16)
             gravity = Gravity.CENTER_HORIZONTAL
         }
-        chapterListLayout.addView(chapterHeader)
+        chapterListLayout!!.addView(chapterHeader)
 
         val chapterContentLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -145,7 +146,7 @@ class MainActivity : Activity() {
             addView(chapterContentLayout)
         }
 
-        chapterListLayout.addView(chapterListView)
+        chapterListLayout!!.addView(chapterListView)
 
         layout.addView(infoLayout, FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.MATCH_PARENT,
@@ -155,7 +156,7 @@ class MainActivity : Activity() {
             FrameLayout.LayoutParams.MATCH_PARENT,
             FrameLayout.LayoutParams.MATCH_PARENT
         ))
-        layout.addView(chapterListLayout, FrameLayout.LayoutParams(
+        layout.addView(chapterListLayout!!, FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.MATCH_PARENT,
             FrameLayout.LayoutParams.MATCH_PARENT
         ))
@@ -168,6 +169,7 @@ class MainActivity : Activity() {
     private fun showInfo() {
         isReaderMode = false
         einkView?.visibility = View.GONE
+        chapterListLayout?.visibility = View.GONE
         scrollView?.parent?.let { (it as View).visibility = View.VISIBLE }
 
         val version = try { nativeGetVersion() } catch (e: UnsatisfiedLinkError) { "NOT LOADED: ${e.message}" }
@@ -263,6 +265,7 @@ class MainActivity : Activity() {
         isReaderMode = true
         isChapterListVisible = false
         scrollView?.parent?.let { (it as View).visibility = View.GONE }
+        chapterListLayout?.visibility = View.GONE
         chapterListView?.visibility = View.GONE
         einkView?.visibility = View.VISIBLE
         Log.i(TAG, "showReader: chapterLines=${chapterLines != null}, totalPages=$totalPages, currentChapter=$currentChapter")
@@ -284,6 +287,7 @@ class MainActivity : Activity() {
     private fun showChapterList() {
         isChapterListVisible = true
         einkView?.visibility = View.GONE
+        chapterListLayout?.visibility = View.VISIBLE
         chapterListView?.visibility = View.VISIBLE
         scrollView?.parent?.let { (it as View).visibility = View.GONE }
 
